@@ -1,2 +1,32 @@
 # Android fstab file for TWRP
-#<src>  <mnt_point>  <type>  <mnt_flags>  <fs_mgr_flags>
+#<src>                                     <mnt_point>       <type>  <mnt_flags>                                                                                                                 <fs_mgr_flags>
+
+# Logical Partitions (Dynamic Super Partition)
+system                                     /system           ext4    ro                                                                                                                          wait,logical,first_stage_mount
+vendor                                     /vendor           ext4    ro                                                                                                                          wait,logical,first_stage_mount
+product                                    /product          ext4    ro                                                                                                                          wait,logical,first_stage_mount
+odm                                        /odm              ext4    ro                                                                                                                          wait,logical,first_stage_mount
+
+# Metadata (Required for TWRP to decrypt Userdata)
+/dev/block/by-name/metadata                /metadata         ext4    noatime,nosuid,nodev,discard                                                                                                wait,check,formattable,first_stage_mount
+
+# Userdata (Internal Storage with HyperOS FBE v2 Encryption Flags)
+/dev/block/by-name/userdata                /data             f2fs    noatime,nosuid,nodev,discard,noflush_merge,reserve_root=134217,resgid=1065,inlinecrypt,fsync_mode=nobarrier                wait,check,formattable,quota,reservedsize=128m,latemount,checkpoint=fs,fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized,keydirectory=/metadata/vold/metadata_encryption,fsverity
+
+# Core Boot & Recovery Partitions
+/dev/block/by-name/boot                    /boot             emmc    defaults                                                                                                                    defaults,slotselect
+/dev/block/by-name/vendor_boot             /vendor_boot      emmc    defaults                                                                                                                    defaults,slotselect
+/dev/block/by-name/recovery                /recovery         emmc    defaults                                                                                                                    defaults,slotselect
+/dev/block/by-name/misc                    /misc             emmc    defaults                                                                                                                    defaults
+
+# Android Verified Boot (AVB)
+/dev/block/by-name/vbmeta                  /vbmeta           emmc    defaults                                                                                                                    defaults,slotselect
+/dev/block/by-name/vbmeta_system           /vbmeta_system    emmc    defaults                                                                                                                    defaults,slotselect
+/dev/block/by-name/vbmeta_vendor           /vbmeta_vendor    emmc    defaults                                                                                                                    defaults,slotselect
+
+# MediaTek Specific NV Partitions (IMEI, Mac Address, etc)
+/dev/block/by-name/nvram                   /nvram            emmc    defaults                                                                                                                    defaults
+/dev/block/by-name/nvdata                  /nvdata           ext4    noatime,nosuid,nodev,discard                                                                                                wait,check,formattable
+/dev/block/by-name/persist                 /persist          ext4    noatime,nosuid,nodev,discard                                                                                                wait,check,formattable
+/dev/block/by-name/protect1                /protect_f        ext4    noatime,nosuid,nodev,discard                                                                                                wait,check,formattable
+/dev/block/by-name/protect2                /protect_s        ext4    noatime,nosuid,nodev,discard                                                                                                wait,check,formattable
