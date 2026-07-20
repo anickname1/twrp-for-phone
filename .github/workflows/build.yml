@@ -1,1 +1,72 @@
+name: TWRP Build Workflow
 
+on:
+  workflow_dispatch:
+    inputs:
+      manifest_branch:
+        description: 'TWRP Manifest Branch (e.g., twrp-12.1 or twrp-11)'
+        required: true
+        default: 'twrp-12.1'
+      build_target:
+        description: 'Target Image'
+        required: true
+        default: 'recoveryimage'
+        type: choice
+        options:
+        - recoveryimage
+        - bootimage
+        - vendor_bootimage
+
+jobs:
+  build:
+    name: Build TWRP for Redmi Note 15 4G
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Device Tree
+        uses: actions/checkout@v4
+        with:
+          path: device_tree
+
+      - name: Free Workspace Space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo apt-get clean
+          df -h
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3
+          mkdir -p ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Initialize and Sync TWRP Source
+        run: |
+          mkdir workspace
+          cd workspace
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b ${{ inputs.manifest_branch }} --depth=1
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+
+      - name: Move Device Tree to Workspace
+        run: |
+          mkdir -p workspace/device/xiaomi
+          mv device_tree workspace/device/xiaomi/spline
+
+      - name: Build TWRP
+        run: |
+          cd workspace
+          export ALLOW_MISSING_DEPENDENCIES=true
+          source build/envsetup.sh
+          lunch omni_spline-eng
+          mka ${{ inputs.build_target }}
+
+      - name: Upload Built Image
+        uses: actions/upload-artifact@v4
+        with:
+          name: TWRP-${{ inputs.manifest_branch }}-spline
+          path: workspace/out/target/product/spline/*.img
